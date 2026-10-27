@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PublicHeader } from "@/components/public-header";
+import { AdBanner } from "@/components/ad-banner";
 import {
   CheckSquare,
   Clock,
@@ -83,6 +84,9 @@ export default function PublicQuizzesPage() {
       <PublicHeader />
 
       <main className="flex-1 max-w-[1120px] w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8">
+        {/* Banner Ad: After Navbar */}
+        <AdBanner />
+
         {/* Soft UI Banner */}
         <div className="card p-6 sm:p-10 relative overflow-hidden">
           <div className="max-w-2xl space-y-3 relative z-10">
@@ -200,6 +204,9 @@ export default function PublicQuizzesPage() {
             })}
           </div>
         )}
+
+        {/* Banner Ad: Quiz Section */}
+        <AdBanner />
       </main>
     </div>
   );
