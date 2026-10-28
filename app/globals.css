@@ -118,6 +118,8 @@ body {
   flex-direction: column;
   gap: 12px;
   transition: box-shadow 0.25s, transform 0.25s;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .ico {
@@ -519,8 +521,27 @@ section {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 26px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.units-responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .units-responsive-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .units-responsive-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 .subj:hover {

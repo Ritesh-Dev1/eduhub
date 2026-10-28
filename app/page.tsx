@@ -4,13 +4,12 @@ import { Fragment, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { PublicHeader } from "@/components/public-header";
 import { AdBanner } from "@/components/ad-banner";
-import { DownloadDialog } from "@/components/download-dialog";
 import {
   AdsterraCard300x250,
   AdsterraLeaderboard728x90,
   AdsterraBanner468x60,
 } from "@/components/adsterra-banner";
-import { getNotesAction, getNoteSignedUrlAction, type NoteItem } from "@/app/actions/notes";
+import { getNotesAction, type NoteItem } from "@/app/actions/notes";
 import { getQuizzesAction, type QuizListItem } from "@/app/actions/quizzes";
 import { Loader2 } from "lucide-react";
 
@@ -36,32 +35,8 @@ export default function HomePage() {
   const [quizzes, setQuizzes] = useState<QuizListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Selected subject for horizontal units track
-  const [selectedSubjectIndex, setSelectedSubjectIndex] = useState<number | null>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-
   // Quizzes filter chip
   const [quizFilter, setQuizFilter] = useState("All");
-
-  // Dialog preview modal state
-  const [previewNote, setPreviewNote] = useState<NoteItem | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-
-  // Download ad countdown modal state
-  const [downloadNote, setDownloadNote] = useState<NoteItem | null>(null);
-
-  // Toast state
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  function showToast(msg: string) {
-    setToastMessage(msg);
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    toastTimeoutRef.current = setTimeout(() => {
-      setToastMessage(null);
-    }, 2400);
-  }
 
   // Load real notes and quizzes from remote database
   useEffect(() => {
@@ -99,58 +74,6 @@ export default function HomePage() {
     });
   });
 
-  function openSubject(index: number) {
-    setSelectedSubjectIndex(index);
-    setTimeout(() => {
-      const unitsEl = document.getElementById("units");
-      if (unitsEl) {
-        unitsEl.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }, 60);
-  }
-
-  function scrollTrack(direction: number) {
-    if (trackRef.current) {
-      const step = 320 * direction;
-      trackRef.current.scrollBy({ left: step, behavior: "smooth" });
-    }
-  }
-
-  async function handlePreview(note: NoteItem) {
-    setPreviewNote(note);
-    setPreviewLoading(true);
-    setPreviewUrl(null);
-
-    const res = await getNoteSignedUrlAction(note.id, false);
-    if (res.ok) {
-      setPreviewUrl(res.data.signedUrl);
-    } else {
-      showToast(res.message);
-    }
-    setPreviewLoading(false);
-  }
-
-  async function handleDownload(note: NoteItem) {
-    showToast(`Downloading ${note.file_name}…`);
-    const res = await getNoteSignedUrlAction(note.id, true);
-    if (res.ok) {
-      window.open(res.data.signedUrl, "_blank");
-    } else {
-      showToast(res.message);
-    }
-  }
-
-  function formatBytes(bytes: number) {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-  }
-
-  const activeSubject =
-    selectedSubjectIndex !== null ? subjectGroups[selectedSubjectIndex] : null;
-
   // Filtered quizzes
   const allSubjectNames = ["All", ...subjectGroups.map((s) => s.name)];
   const filteredQuizzes = quizzes.filter(
@@ -163,7 +86,7 @@ export default function HomePage() {
 
       <main className="wrap flex-1 w-full">
         {/* Banner Ad: After Navbar */}
-        <AdBanner />
+         <AdsterraLeaderboard728x90 />
 
         {/* Eduhub Hero Section */}
         <section className="hero">
@@ -247,92 +170,29 @@ export default function HomePage() {
           {/* Subjects Grid */}
           {!loading && subjectGroups.length > 0 && (
             <div className="grid">
-              {subjectGroups.map((subject, idx) => {
-                const isExpanded = selectedSubjectIndex === idx;
-
-                return (
-                  <Fragment key={subject.name}>
-                    <button
-                      className="card subj"
-                      aria-expanded={isExpanded}
-                      onClick={() => openSubject(idx)}
-                      style={{ cursor: "pointer", border: 0 }}
-                    >
-                      <span className="ico" aria-hidden="true">
-                        {subject.icon}
-                      </span>
-                      <h3>{subject.name}</h3>
-                      <span className="meta">
-                        {subject.notes.length} {subject.notes.length === 1 ? "unit" : "units"} · PDF notes
-                      </span>
-                      <span className="pill">
-                        {isExpanded ? "Units open" : "Open units"}
-                      </span>
-                    </button>
-                    {(idx + 1) % 2 === 0 && (
-                      <AdsterraCard300x250 key={`ad-subject-${idx}`} />
-                    )}
-                  </Fragment>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Units Horizontal Slider Track */}
-          {activeSubject && (
-            <div id="units" className="show">
-              <div className="uhead">
-                <div>
-                  <h3>{activeSubject.name}</h3>
-                  <p className="meta">
-                    {activeSubject.notes.length} units available. Swipe or use the arrows.
-                  </p>
-                </div>
-                <div className="arrows">
-                  <button
-                    className="btn"
-                    onClick={() => scrollTrack(-1)}
-                    aria-label="Scroll units left"
+              {subjectGroups.map((subject, idx) => (
+                <Fragment key={subject.name}>
+                  <Link
+                    href={`/subjects/${encodeURIComponent(subject.name)}`}
+                    className="card subj"
+                    style={{ textDecoration: "none", color: "inherit" }}
                   >
-                    ←
-                  </button>
-                  <button
-                    className="btn"
-                    onClick={() => scrollTrack(1)}
-                    aria-label="Scroll units right"
-                  >
-                    →
-                  </button>
-                </div>
-              </div>
-
-              <div className="track" ref={trackRef}>
-                {activeSubject.notes.map((note, k) => (
-                  <Fragment key={note.id}>
-                    <article className="card unit">
-                      <span className="pill" style={{ alignSelf: "flex-start" }}>
-                        Unit {k + 1}
-                      </span>
-                      <h3>{note.title}</h3>
-                      <p style={{ color: "var(--mute)", fontSize: "14.5px", flex: 1 }}>
-                        Official curriculum document verified by department faculty.
-                      </p>
-                      <span className="size">PDF · {formatBytes(note.file_size)}</span>
-                      <div className="acts">
-                        <button className="btn" onClick={() => handlePreview(note)}>
-                          Preview
-                        </button>
-                        <button className="btn pri" onClick={() => setDownloadNote(note)}>
-                          Download
-                        </button>
-                      </div>
-                    </article>
-                    {(k + 1) % 2 === 0 && (
-                      <AdsterraCard300x250 variant="unit" key={`ad-unit-${k}`} />
-                    )}
-                  </Fragment>
-                ))}
-              </div>
+                    <span className="ico" aria-hidden="true">
+                      {subject.icon}
+                    </span>
+                    <h3>{subject.name}</h3>
+                    <span className="meta">
+                      {subject.notes.length} {subject.notes.length === 1 ? "unit" : "units"} · PDF notes
+                    </span>
+                    <span className="pill">
+                      View units &rarr;
+                    </span>
+                  </Link>
+                  {(idx + 1) % 2 === 0 && (
+                    <AdsterraCard300x250 key={`ad-subject-${idx}`} />
+                  )}
+                </Fragment>
+              ))}
             </div>
           )}
         </section>
@@ -439,77 +299,6 @@ export default function HomePage() {
 
         <footer>Eduhub · Study notes &amp; quizzes &bull;&bull; Proctored Assessments</footer>
       </main>
-
-      {/* Preview Dialog Modal */}
-      {previewNote && (
-        <div className="soft-modal-overlay p-4" onClick={() => setPreviewNote(null)}>
-          <div
-            className="soft-modal-content max-w-lg w-full p-6 sm:p-8 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-xl font-black text-[var(--ink)]">{previewNote.title}</h3>
-            <p className="text-xs text-[var(--mute)] font-medium">
-              {previewNote.subject} &bull; {formatBytes(previewNote.file_size)}
-            </p>
-
-            <div className="doc py-2">
-              {previewLoading ? (
-                <div className="py-8 text-center" style={{ color: "var(--mute)" }}>
-                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[var(--acc)]" />
-                  <p className="text-xs font-bold">Generating secure signed preview...</p>
-                </div>
-              ) : previewUrl ? (
-                <div className="space-y-3">
-                  <p className="text-xs" style={{ color: "var(--mute)" }}>
-                    Secure 3600-second access link generated for <strong>{previewNote.file_name}</strong>.
-                  </p>
-                  <iframe
-                    src={previewUrl}
-                    className="w-full h-64 rounded-xl border border-[var(--lo)]"
-                    title="PDF Preview"
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="bar" />
-                  <div className="bar" />
-                  <div className="bar" />
-                  <div className="bar" style={{ width: "40%" }} />
-                  <div className="bar" />
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--lo)]">
-              <button
-                className="btn pri"
-                onClick={() => {
-                  setDownloadNote(previewNote);
-                  setPreviewNote(null);
-                }}
-              >
-                Download PDF
-              </button>
-              <button className="btn" onClick={() => setPreviewNote(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5-Second Native Ad Download Dialog */}
-      <DownloadDialog
-        note={downloadNote}
-        isOpen={!!downloadNote}
-        onClose={() => setDownloadNote(null)}
-        onDownload={handleDownload}
-      />
-
-      {/* Floating Toast */}
-      <div className={`toast ${toastMessage ? "on" : ""}`} role="status">
-        {toastMessage}
-      </div>
     </div>
   );
 }

@@ -912,9 +912,10 @@ export function QuizClient({ quizId }: QuizClientProps) {
                 })}
               </div>
 
-              {/* Navigation Prev/Next */}
-              <div className="pt-6 border-t border-[var(--lo)] flex items-center justify-between">
+              {/* Navigation Prev/Next & Submit */}
+              <div className="pt-6 border-t border-[var(--lo)] flex flex-wrap items-center justify-between gap-3">
                 <button
+                  type="button"
                   onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
                   disabled={currentQuestionIndex === 0}
                   className="soft-button text-xs font-bold disabled:opacity-40 cursor-pointer"
@@ -922,15 +923,27 @@ export function QuizClient({ quizId }: QuizClientProps) {
                   &larr; Previous
                 </button>
 
-                <button
-                  onClick={() =>
-                    setCurrentQuestionIndex((prev) => Math.min(questions.length - 1, prev + 1))
-                  }
-                  disabled={currentQuestionIndex === questions.length - 1}
-                  className="soft-button-primary text-xs font-bold disabled:opacity-40 cursor-pointer"
-                >
-                  Next Question &rarr;
-                </button>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsSubmitModalOpen(true)}
+                    className="soft-button-primary text-xs font-bold flex items-center gap-1.5 cursor-pointer !bg-emerald-600 hover:!bg-emerald-700"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Submit Exam</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentQuestionIndex((prev) => Math.min(questions.length - 1, prev + 1))
+                    }
+                    disabled={currentQuestionIndex === questions.length - 1}
+                    className="soft-button text-xs font-bold disabled:opacity-40 cursor-pointer"
+                  >
+                    Next Question &rarr;
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -981,9 +994,60 @@ export function QuizClient({ quizId }: QuizClientProps) {
                 <span>Unanswered ({questions.length - Object.keys(answers).length})</span>
               </div>
             </div>
+
+            {/* Bottom Submit Button in Question Palette */}
+            <div className="pt-3 border-t border-[var(--lo)]">
+              <button
+                type="button"
+                onClick={() => setIsSubmitModalOpen(true)}
+                className="w-full soft-button-primary py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-sm !bg-emerald-600 hover:!bg-emerald-700"
+              >
+                <Send className="w-4 h-4" />
+                <span>Submit Examination</span>
+              </button>
+            </div>
           </div>
         </div>
       </main>
+
+      {/* Sticky Bottom Action Bar on Mobile Viewports */}
+      <div
+        className="lg:hidden sticky bottom-0 z-30 px-4 py-3 border-t border-[var(--lo)] flex items-center justify-between gap-2.5 backdrop-blur-md"
+        style={{ background: "var(--bg)", boxShadow: "0 -4px 12px rgba(0,0,0,0.06)" }}
+      >
+        <button
+          type="button"
+          onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
+          disabled={currentQuestionIndex === 0}
+          className="soft-button text-xs font-bold disabled:opacity-40 cursor-pointer !py-2 !px-3"
+        >
+          &larr; Prev
+        </button>
+
+        <span className="text-xs font-mono font-bold text-[var(--mute)]">
+          {currentQuestionIndex + 1} / {questions.length}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => setIsSubmitModalOpen(true)}
+          className="soft-button-primary text-xs font-bold flex items-center gap-1.5 cursor-pointer !py-2 !px-3.5 !bg-emerald-600 hover:!bg-emerald-700"
+        >
+          <Send className="w-3.5 h-3.5" />
+          <span>Submit</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setCurrentQuestionIndex((prev) => Math.min(questions.length - 1, prev + 1))
+          }
+          disabled={currentQuestionIndex === questions.length - 1}
+          className="soft-button text-xs font-bold disabled:opacity-40 cursor-pointer !py-2 !px-3"
+        >
+          Next &rarr;
+        </button>
+      </div>
 
       {/* Submit Confirmation Dialog */}
       {isSubmitModalOpen && (
