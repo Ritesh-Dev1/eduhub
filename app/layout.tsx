@@ -21,7 +21,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${manrope.variable} antialiased`}>
       <head>
-        <script async src="https://js.wpadmngr.com/static/adManager.js" data-admpid="469987"></script>
+        <script src="https://pl32061959.profitableratecpmnetwork.com/8c/a7/99/8ca7996905f9535f70d70807c165fe07.js" />
+        <script
+          async
+          data-cfasync="false"
+          src="https://pl32061952.profitableratecpmnetwork.com/e0a941ced58f18528293f17c42f9cc54/invoke.js"
+        />
+        <script async src="https://js.wpadmngr.com/static/adManager.js" data-admpid="469987" />
         <script
           data-cfasync="false"
           dangerouslySetInnerHTML={{
@@ -29,7 +35,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        
+        {children}
+      </body>
     </html>
   );
 }

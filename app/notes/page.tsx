@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { PublicHeader } from "@/components/public-header";
 import { AdBanner } from "@/components/ad-banner";
+import { DownloadDialog } from "@/components/download-dialog";
+import {
+  AdsterraCard300x250,
+  AdsterraLeaderboard728x90,
+  AdsterraBanner468x60,
+} from "@/components/adsterra-banner";
 import {
   FileText,
   Search,
@@ -23,6 +29,7 @@ export default function PublicNotesPage() {
   const [selectedSubject, setSelectedSubject] = useState<string>("ALL");
   const [error, setError] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [downloadNote, setDownloadNote] = useState<NoteItem | null>(null);
 
   async function loadNotes() {
     setLoading(true);
@@ -99,6 +106,9 @@ export default function PublicNotesPage() {
           </div>
         </div>
 
+        {/* 728x90 Leaderboard Ad: Below repository header */}
+        <AdsterraLeaderboard728x90 />
+
         {/* Error Alert */}
         {error && (
           <div
@@ -172,89 +182,104 @@ export default function PublicNotesPage() {
         {/* Notes Grid (Soft UI Cards) */}
         {!loading && filteredNotes.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredNotes.map((note) => {
+            {filteredNotes.map((note, idx) => {
               const isViewing = actionLoadingId === `${note.id}-view`;
               const isDownloading = actionLoadingId === `${note.id}-dl`;
 
               return (
-                <div
-                  key={note.id}
-                  className="card justify-between space-y-4 hover:-translate-y-1 transition-all"
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <span
-                        className="inline-block px-3 py-1 rounded-full text-xs font-bold"
-                        style={{ boxShadow: "var(--press)", color: "var(--acc)" }}
-                      >
-                        {note.subject}
-                      </span>
-                      <span className="text-xs text-[var(--mute)] font-mono font-semibold">
-                        {formatBytes(note.file_size)}
-                      </span>
+                <Fragment key={note.id}>
+                  <div
+                    className="card justify-between space-y-4 hover:-translate-y-1 transition-all"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <span
+                          className="inline-block px-3 py-1 rounded-full text-xs font-bold"
+                          style={{ boxShadow: "var(--press)", color: "var(--acc)" }}
+                        >
+                          {note.subject}
+                        </span>
+                        <span className="text-xs text-[var(--mute)] font-mono font-semibold">
+                          {formatBytes(note.file_size)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-start gap-3.5">
+                        <div className="ico shrink-0 text-red-500">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-extrabold text-[var(--ink)] text-base line-clamp-2 leading-snug">
+                            {note.title}
+                          </h3>
+                          <p className="text-xs text-[var(--mute)] truncate mt-1">{note.file_name}</p>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex items-start gap-3.5">
-                      <div className="ico shrink-0 text-red-500">
-                        <FileText className="w-6 h-6" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-extrabold text-[var(--ink)] text-base line-clamp-2 leading-snug">
-                          {note.title}
-                        </h3>
-                        <p className="text-xs text-[var(--mute)] truncate mt-1">{note.file_name}</p>
+                    <div className="pt-4 border-t border-[var(--lo)] flex items-center justify-between text-xs text-[var(--mute)]">
+                      <span className="font-medium">
+                        {new Date(note.created_at).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenNote(note.id, false)}
+                          disabled={isViewing || isDownloading}
+                          className="btn text-xs font-bold disabled:opacity-50 cursor-pointer"
+                          title="View PDF"
+                        >
+                          {isViewing ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Eye className="w-3.5 h-3.5" />
+                          )}
+                          <span>View</span>
+                        </button>
+
+                        <button
+                          onClick={() => setDownloadNote(note)}
+                          disabled={isViewing || isDownloading}
+                          className="btn pri text-xs font-bold disabled:opacity-50 cursor-pointer"
+                          title="Download PDF"
+                        >
+                          {isDownloading ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5" />
+                          )}
+                          <span>Get</span>
+                        </button>
                       </div>
                     </div>
                   </div>
-
-                  <div className="pt-4 border-t border-[var(--lo)] flex items-center justify-between text-xs text-[var(--mute)]">
-                    <span className="font-medium">
-                      {new Date(note.created_at).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleOpenNote(note.id, false)}
-                        disabled={isViewing || isDownloading}
-                        className="btn text-xs font-bold disabled:opacity-50 cursor-pointer"
-                        title="View PDF"
-                      >
-                        {isViewing ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Eye className="w-3.5 h-3.5" />
-                        )}
-                        <span>View</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleOpenNote(note.id, true)}
-                        disabled={isViewing || isDownloading}
-                        className="btn pri text-xs font-bold disabled:opacity-50 cursor-pointer"
-                        title="Download PDF"
-                      >
-                        {isDownloading ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Download className="w-3.5 h-3.5" />
-                        )}
-                        <span>Get</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                  {(idx + 1) % 2 === 0 && (
+                    <AdsterraCard300x250 key={`ad-note-${idx}`} />
+                  )}
+                </Fragment>
               );
             })}
           </div>
         )}
 
+        {/* 468x60 Banner Ad: Bottom of repository */}
+        <AdsterraBanner468x60 />
+
         {/* Banner Ad: Subject Section */}
         <AdBanner />
       </main>
+
+      {/* 5-Second Native Ad Download Dialog */}
+      <DownloadDialog
+        note={downloadNote}
+        isOpen={!!downloadNote}
+        onClose={() => setDownloadNote(null)}
+        onDownload={(n) => handleOpenNote(n.id, true)}
+      />
     </div>
   );
 }

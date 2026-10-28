@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { Fragment, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { PublicHeader } from "@/components/public-header";
 import { AdBanner } from "@/components/ad-banner";
+import { DownloadDialog } from "@/components/download-dialog";
+import {
+  AdsterraCard300x250,
+  AdsterraLeaderboard728x90,
+  AdsterraBanner468x60,
+} from "@/components/adsterra-banner";
 import { getNotesAction, getNoteSignedUrlAction, type NoteItem } from "@/app/actions/notes";
 import { getQuizzesAction, type QuizListItem } from "@/app/actions/quizzes";
 import { Loader2 } from "lucide-react";
@@ -41,6 +47,9 @@ export default function HomePage() {
   const [previewNote, setPreviewNote] = useState<NoteItem | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Download ad countdown modal state
+  const [downloadNote, setDownloadNote] = useState<NoteItem | null>(null);
 
   // Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -206,6 +215,9 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 728x90 Leaderboard Ad: Top placement below Hero */}
+        <AdsterraLeaderboard728x90 />
+
         {/* Subjects Section */}
         <section id="subjects">
           <div className="head">
@@ -239,24 +251,28 @@ export default function HomePage() {
                 const isExpanded = selectedSubjectIndex === idx;
 
                 return (
-                  <button
-                    key={subject.name}
-                    className="card subj"
-                    aria-expanded={isExpanded}
-                    onClick={() => openSubject(idx)}
-                    style={{ cursor: "pointer", border: 0 }}
-                  >
-                    <span className="ico" aria-hidden="true">
-                      {subject.icon}
-                    </span>
-                    <h3>{subject.name}</h3>
-                    <span className="meta">
-                      {subject.notes.length} {subject.notes.length === 1 ? "unit" : "units"} · PDF notes
-                    </span>
-                    <span className="pill">
-                      {isExpanded ? "Units open" : "Open units"}
-                    </span>
-                  </button>
+                  <Fragment key={subject.name}>
+                    <button
+                      className="card subj"
+                      aria-expanded={isExpanded}
+                      onClick={() => openSubject(idx)}
+                      style={{ cursor: "pointer", border: 0 }}
+                    >
+                      <span className="ico" aria-hidden="true">
+                        {subject.icon}
+                      </span>
+                      <h3>{subject.name}</h3>
+                      <span className="meta">
+                        {subject.notes.length} {subject.notes.length === 1 ? "unit" : "units"} · PDF notes
+                      </span>
+                      <span className="pill">
+                        {isExpanded ? "Units open" : "Open units"}
+                      </span>
+                    </button>
+                    {(idx + 1) % 2 === 0 && (
+                      <AdsterraCard300x250 key={`ad-subject-${idx}`} />
+                    )}
+                  </Fragment>
                 );
               })}
             </div>
@@ -292,29 +308,37 @@ export default function HomePage() {
 
               <div className="track" ref={trackRef}>
                 {activeSubject.notes.map((note, k) => (
-                  <article key={note.id} className="card unit">
-                    <span className="pill" style={{ alignSelf: "flex-start" }}>
-                      Unit {k + 1}
-                    </span>
-                    <h3>{note.title}</h3>
-                    <p style={{ color: "var(--mute)", fontSize: "14.5px", flex: 1 }}>
-                      Official curriculum document verified by department faculty.
-                    </p>
-                    <span className="size">PDF · {formatBytes(note.file_size)}</span>
-                    <div className="acts">
-                      <button className="btn" onClick={() => handlePreview(note)}>
-                        Preview
-                      </button>
-                      <button className="btn pri" onClick={() => handleDownload(note)}>
-                        Download
-                      </button>
-                    </div>
-                  </article>
+                  <Fragment key={note.id}>
+                    <article className="card unit">
+                      <span className="pill" style={{ alignSelf: "flex-start" }}>
+                        Unit {k + 1}
+                      </span>
+                      <h3>{note.title}</h3>
+                      <p style={{ color: "var(--mute)", fontSize: "14.5px", flex: 1 }}>
+                        Official curriculum document verified by department faculty.
+                      </p>
+                      <span className="size">PDF · {formatBytes(note.file_size)}</span>
+                      <div className="acts">
+                        <button className="btn" onClick={() => handlePreview(note)}>
+                          Preview
+                        </button>
+                        <button className="btn pri" onClick={() => setDownloadNote(note)}>
+                          Download
+                        </button>
+                      </div>
+                    </article>
+                    {(k + 1) % 2 === 0 && (
+                      <AdsterraCard300x250 variant="unit" key={`ad-unit-${k}`} />
+                    )}
+                  </Fragment>
                 ))}
               </div>
             </div>
           )}
         </section>
+
+        {/* 468x60 Banner Ad: Transition between Subjects and Quizzes */}
+        <AdsterraBanner468x60 />
 
         {/* Banner Ad: After Subjects Section */}
         <AdBanner />
@@ -362,43 +386,48 @@ export default function HomePage() {
           {/* Quizzes Grid */}
           {!loading && filteredQuizzes.length > 0 && (
             <div className="grid quiz mt-6">
-              {filteredQuizzes.map((q) => {
+              {filteredQuizzes.map((q, idx) => {
                 const canEnter = q.status === "open" || q.status === "live";
 
                 return (
-                  <article key={q.id} className="card">
-                    <span className="pill" style={{ alignSelf: "flex-start" }}>
-                      {q.status === "live" ? "Live Exam" : q.status === "open" ? "Registration Open" : "Upcoming"}
-                    </span>
-                    <h3>{q.title}</h3>
-                    <div className="row">
-                      <span>{q.question_count} questions</span>
-                      <span>{q.duration_minutes} min</span>
-                    </div>
-
-                    <div className="bars" role="img" aria-label="Exam status">
-                      <b style={{ width: q.status === "live" ? "100%" : "60%" }} />
-                    </div>
-
-                    <div className="row">
-                      <span>{q.total_marks} total marks</span>
-                      <span>{q.show_score ? "Instant score" : "Reviewed"}</span>
-                    </div>
-
-                    {canEnter ? (
-                      <Link
-                        href={`/quizzes/${q.id}`}
-                        className="btn pri"
-                        style={{ alignSelf: "flex-start" }}
-                      >
-                        {q.status === "live" ? "Enter live exam" : "Join waiting room"}
-                      </Link>
-                    ) : (
-                      <span className="btn" style={{ alignSelf: "flex-start", opacity: 0.6, cursor: "not-allowed" }}>
-                        {q.status === "closed" ? "Exam ended" : "Not open"}
+                  <Fragment key={q.id}>
+                    <article className="card">
+                      <span className="pill" style={{ alignSelf: "flex-start" }}>
+                        {q.status === "live" ? "Live Exam" : q.status === "open" ? "Registration Open" : "Upcoming"}
                       </span>
+                      <h3>{q.title}</h3>
+                      <div className="row">
+                        <span>{q.question_count} questions</span>
+                        <span>{q.duration_minutes} min</span>
+                      </div>
+
+                      <div className="bars" role="img" aria-label="Exam status">
+                        <b style={{ width: q.status === "live" ? "100%" : "60%" }} />
+                      </div>
+
+                      <div className="row">
+                        <span>{q.total_marks} total marks</span>
+                        <span>{q.show_score ? "Instant score" : "Reviewed"}</span>
+                      </div>
+
+                      {canEnter ? (
+                        <Link
+                          href={`/quizzes/${q.id}`}
+                          className="btn pri"
+                          style={{ alignSelf: "flex-start" }}
+                        >
+                          {q.status === "live" ? "Enter live exam" : "Join waiting room"}
+                        </Link>
+                      ) : (
+                        <span className="btn" style={{ alignSelf: "flex-start", opacity: 0.6, cursor: "not-allowed" }}>
+                          {q.status === "closed" ? "Exam ended" : "Not open"}
+                        </span>
+                      )}
+                    </article>
+                    {(idx + 1) % 2 === 0 && (
+                      <AdsterraCard300x250 key={`ad-quiz-${idx}`} />
                     )}
-                  </article>
+                  </Fragment>
                 );
               })}
             </div>
@@ -455,7 +484,7 @@ export default function HomePage() {
               <button
                 className="btn pri"
                 onClick={() => {
-                  handleDownload(previewNote);
+                  setDownloadNote(previewNote);
                   setPreviewNote(null);
                 }}
               >
@@ -468,6 +497,14 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {/* 5-Second Native Ad Download Dialog */}
+      <DownloadDialog
+        note={downloadNote}
+        isOpen={!!downloadNote}
+        onClose={() => setDownloadNote(null)}
+        onDownload={handleDownload}
+      />
 
       {/* Floating Toast */}
       <div className={`toast ${toastMessage ? "on" : ""}`} role="status">

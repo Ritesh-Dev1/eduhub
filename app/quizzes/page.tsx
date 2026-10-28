@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { PublicHeader } from "@/components/public-header";
 import { AdBanner } from "@/components/ad-banner";
+import {
+  AdsterraCard300x250,
+  AdsterraLeaderboard728x90,
+  AdsterraBanner468x60,
+} from "@/components/adsterra-banner";
 import {
   CheckSquare,
   Clock,
@@ -105,6 +110,9 @@ export default function PublicQuizzesPage() {
           </div>
         </div>
 
+        {/* 728x90 Leaderboard Ad: Below quiz header */}
+        <AdsterraLeaderboard728x90 />
+
         {/* Error Alert */}
         {error && (
           <div
@@ -146,64 +154,71 @@ export default function PublicQuizzesPage() {
         {/* Quizzes Grid (Soft UI Cards) */}
         {!loading && quizzes.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {quizzes.map((quiz) => {
+            {quizzes.map((quiz, idx) => {
               const canEnter = quiz.status === "open" || quiz.status === "live";
 
               return (
-                <div
-                  key={quiz.id}
-                  className="card justify-between space-y-6 hover:-translate-y-1 transition-all"
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                      {renderStatusBadge(quiz.status)}
-                      <div
-                        className="flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-full"
-                        style={{ boxShadow: "var(--press)", color: "var(--mute)" }}
-                      >
-                        <Clock className="w-3.5 h-3.5" />
-                        {quiz.duration_minutes} mins
+                <Fragment key={quiz.id}>
+                  <div
+                    className="card justify-between space-y-6 hover:-translate-y-1 transition-all"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-2">
+                        {renderStatusBadge(quiz.status)}
+                        <div
+                          className="flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-full"
+                          style={{ boxShadow: "var(--press)", color: "var(--mute)" }}
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                          {quiz.duration_minutes} mins
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-lg font-extrabold text-[var(--ink)] leading-snug line-clamp-2">
+                          {quiz.title}
+                        </h3>
+                        <p className="text-xs text-[var(--mute)] mt-2 font-medium">
+                          Total questions: <span className="font-bold text-[var(--ink)]">{quiz.question_count}</span> &bull;{" "}
+                          Total marks: <span className="font-bold text-[var(--ink)]">{quiz.total_marks}</span>
+                        </p>
                       </div>
                     </div>
 
-                    <div>
-                      <h3 className="text-lg font-extrabold text-[var(--ink)] leading-snug line-clamp-2">
-                        {quiz.title}
-                      </h3>
-                      <p className="text-xs text-[var(--mute)] mt-2 font-medium">
-                        Total questions: <span className="font-bold text-[var(--ink)]">{quiz.question_count}</span> &bull;{" "}
-                        Total marks: <span className="font-bold text-[var(--ink)]">{quiz.total_marks}</span>
-                      </p>
+                    <div className="pt-4 border-t border-[var(--lo)]">
+                      {canEnter ? (
+                        <Link
+                          href={`/quizzes/${quiz.id}`}
+                          className={`w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-full text-sm font-bold text-white transition-all cursor-pointer ${
+                            quiz.status === "live" ? "soft-button-success" : "soft-button-primary"
+                          }`}
+                          style={{ textDecoration: "none" }}
+                        >
+                          <span>{quiz.status === "live" ? "Enter Live Exam" : "Join Waiting Room"}</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </Link>
+                      ) : (
+                        <div
+                          className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-full text-xs font-bold text-[var(--mute)] cursor-not-allowed"
+                          style={{ boxShadow: "var(--press)", background: "var(--bg)" }}
+                        >
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>{quiz.status === "closed" ? "Exam Completed" : "Not Open Yet"}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  <div className="pt-4 border-t border-[var(--lo)]">
-                    {canEnter ? (
-                      <Link
-                        href={`/quizzes/${quiz.id}`}
-                        className={`w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-full text-sm font-bold text-white transition-all cursor-pointer ${
-                          quiz.status === "live" ? "soft-button-success" : "soft-button-primary"
-                        }`}
-                        style={{ textDecoration: "none" }}
-                      >
-                        <span>{quiz.status === "live" ? "Enter Live Exam" : "Join Waiting Room"}</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    ) : (
-                      <div
-                        className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-full text-xs font-bold text-[var(--mute)] cursor-not-allowed"
-                        style={{ boxShadow: "var(--press)", background: "var(--bg)" }}
-                      >
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>{quiz.status === "closed" ? "Exam Completed" : "Not Open Yet"}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  {(idx + 1) % 2 === 0 && (
+                    <AdsterraCard300x250 key={`ad-quiz-${idx}`} />
+                  )}
+                </Fragment>
               );
             })}
           </div>
         )}
+
+        {/* 468x60 Banner Ad: Bottom of quizzes */}
+        <AdsterraBanner468x60 />
 
         {/* Banner Ad: Quiz Section */}
         <AdBanner />

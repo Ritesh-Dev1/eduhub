@@ -132,8 +132,48 @@ export async function joinQuizAttemptAction(params: {
       }
 
       // If attempt was already in_progress and user reconnects without active session:
-      // ANTI-CHEAT RULE: Page refresh / reload during active exam triggers blocked state
+      // Check if administrator authorized re-examination
       if (existingAttempt.status === "in_progress") {
+        const { data: latestEvent } = await admin
+          .from("attempt_events")
+          .select("id, type, created_at")
+          .eq("attempt_id", existingAttempt.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // If proctor authorized re-examination, let the student resume/restart seamlessly
+        if (latestEvent?.type === "re_allowed") {
+          await admin
+            .from("attempts")
+            .update({
+              session_token: params.clientToken,
+              last_heartbeat: new Date().toISOString(),
+            })
+            .eq("id", existingAttempt.id);
+
+          await admin.from("attempt_events").insert({
+            attempt_id: existingAttempt.id,
+            type: "reconnected",
+            reason: "Student entered authorized re-examination session.",
+          });
+
+          return {
+            attemptId: existingAttempt.id,
+            studentId: student.id,
+            studentName: student.name,
+            rollNumber: student.roll_number,
+            sessionToken: params.clientToken,
+            status: "in_progress",
+            quizTitle: quiz.title,
+            startAt: quiz.start_at,
+            countdownSeconds: quiz.countdown_seconds ?? 180,
+            durationMinutes: quiz.duration_minutes,
+            showScore: quiz.show_score ?? true,
+          };
+        }
+
+        // Standard anti-cheat: unexpected page reload during active exam
         await admin
           .from("attempts")
           .update({ status: "blocked" })
@@ -582,6 +622,51 @@ export async function submitQuizAction(params: {
       score: totalScore,
       totalMarks,
       showScore: quiz.show_score ?? true,
+    };
+  });
+}
+
+// 6. Check Live Attempt Status (Used by Blocked screen to auto-resume on Proctor Re-authorization)
+export async function checkAttemptStatusAction(params: {
+  attemptId: string;
+  rollNumber?: string;
+}): Promise<
+  ActionResult<{
+    status: "waiting" | "countdown" | "in_progress" | "submitted" | "blocked";
+    sessionToken: string;
+  }>
+> {
+  return safeAction("checkAttemptStatusAction", async () => {
+    const admin = createAdminClient();
+
+    const { data: attempt, error } = await admin
+      .from("attempts")
+      .select("id, status, session_token, student_id")
+      .eq("id", params.attemptId)
+      .maybeSingle();
+
+    if (error || !attempt) {
+      throw new AppError("NOT_FOUND", "Attempt session not found.");
+    }
+
+    if (params.rollNumber) {
+      const { data: student } = await admin
+        .from("students")
+        .select("id, roll_number")
+        .eq("id", attempt.student_id)
+        .maybeSingle();
+
+      if (
+        !student ||
+        student.roll_number.toLowerCase() !== params.rollNumber.trim().toLowerCase()
+      ) {
+        throw new AppError("UNAUTHORIZED", "Student credentials mismatch.");
+      }
+    }
+
+    return {
+      status: attempt.status as "waiting" | "countdown" | "in_progress" | "submitted" | "blocked",
+      sessionToken: attempt.session_token,
     };
   });
 }

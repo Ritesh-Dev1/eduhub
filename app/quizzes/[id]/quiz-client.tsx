@@ -9,6 +9,7 @@ import {
   sendHeartbeatAction,
   blockAttemptAction,
   submitQuizAction,
+  checkAttemptStatusAction,
   type StudentQuestionView,
 } from "@/app/actions/quiz-flow";
 import {
@@ -69,6 +70,7 @@ export function QuizClient({ quizId }: QuizClientProps) {
 
   // Anti-cheat refs
   const hasTriggeredBlockRef = useRef(false);
+  const canTriggerBlurRef = useRef(false);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -228,6 +230,73 @@ export function QuizClient({ quizId }: QuizClientProps) {
     };
   }, [phase, quizId, attemptId]);
 
+  // 2b. Auto-Unblock Listener & 1.5s Poller for BLOCKED Phase
+  // Listens for Proctor Re-authorization so exam opens automatically without page refresh
+  useEffect(() => {
+    if (phase !== "BLOCKED" || !attemptId) return;
+
+    let isSubscribed = true;
+
+    async function checkUnblock() {
+      try {
+        const res = await checkAttemptStatusAction({ attemptId, rollNumber });
+        if (!isSubscribed) return;
+
+        if (res.ok && res.data.status === "in_progress") {
+          // Proctor has authorized re-exam!
+          if (res.data.sessionToken) {
+            setSessionToken(res.data.sessionToken);
+          }
+          hasTriggeredBlockRef.current = false;
+          canTriggerBlurRef.current = false;
+          setErrorMessage(null);
+          setPhase("EXAM");
+        }
+      } catch {
+        // Silent poll
+      }
+    }
+
+    // Check immediately on entering BLOCKED phase
+    checkUnblock();
+
+    // Fast 1.5s poll to ensure reliable unlock across all network conditions
+    const pollInterval = setInterval(checkUnblock, 1500);
+
+    // Instant Supabase Realtime channel for live attempt status updates
+    const supabase = createClient();
+    const attemptChannel = supabase
+      .channel(`attempt_unblock_${attemptId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "attempts",
+          filter: `id=eq.${attemptId}`,
+        },
+        (payload) => {
+          const updated = payload.new as { status?: string; session_token?: string };
+          if (updated.status === "in_progress") {
+            if (updated.session_token) {
+              setSessionToken(updated.session_token);
+            }
+            hasTriggeredBlockRef.current = false;
+            canTriggerBlurRef.current = false;
+            setErrorMessage(null);
+            setPhase("EXAM");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(pollInterval);
+      supabase.removeChannel(attemptChannel);
+    };
+  }, [phase, attemptId, rollNumber]);
+
   // 3. Countdown Timer
   useEffect(() => {
     if (phase !== "COUNTDOWN" || !startAt) return;
@@ -304,6 +373,12 @@ export function QuizClient({ quizId }: QuizClientProps) {
       // BroadcastChannel unsupported fallback
     }
 
+    // 1.5-second focus grace period when entering EXAM to prevent instant false-positive re-block
+    canTriggerBlurRef.current = false;
+    const graceTimer = setTimeout(() => {
+      canTriggerBlurRef.current = true;
+    }, 1500);
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
         triggerBlock("Switched browser tab or minimized window during active exam.");
@@ -311,6 +386,7 @@ export function QuizClient({ quizId }: QuizClientProps) {
     };
 
     const handleWindowBlur = () => {
+      if (!canTriggerBlurRef.current) return;
       triggerBlock("Navigated away from examination window.");
     };
 
@@ -331,6 +407,7 @@ export function QuizClient({ quizId }: QuizClientProps) {
     }, 5000);
 
     return () => {
+      clearTimeout(graceTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleWindowBlur);
       if (broadcastChannelRef.current) {
@@ -607,14 +684,41 @@ export function QuizClient({ quizId }: QuizClientProps) {
           </p>
         </div>
 
-        <div className="pt-2 text-xs text-slate-400 font-mono">Attempt Reference: {attemptId.slice(0, 8)}</div>
-
-        <Link
-          href="/"
-          className="inline-block px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 soft-button"
+        {/* Live Proctor Authorization Sync Banner */}
+        <div
+          className="p-3.5 rounded-2xl flex items-center justify-center gap-2.5 text-xs text-amber-700 font-bold"
+          style={{ background: "var(--bg)", boxShadow: "var(--press)" }}
         >
-          Return to Portal
-        </Link>
+          <Loader2 className="w-4 h-4 animate-spin text-amber-600 shrink-0" />
+          <span>Listening for proctor authorization... As soon as admin unlocks, your exam opens automatically without refreshing.</span>
+        </div>
+
+        <div className="pt-1 text-xs text-slate-400 font-mono">Attempt Reference: {attemptId.slice(0, 8)}</div>
+
+        <div className="flex items-center justify-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={async () => {
+              const res = await checkAttemptStatusAction({ attemptId, rollNumber });
+              if (res.ok && res.data.status === "in_progress") {
+                if (res.data.sessionToken) setSessionToken(res.data.sessionToken);
+                hasTriggeredBlockRef.current = false;
+                canTriggerBlurRef.current = false;
+                setErrorMessage(null);
+                setPhase("EXAM");
+              }
+            }}
+            className="soft-button-primary text-xs font-bold cursor-pointer"
+          >
+            Check Status Now
+          </button>
+          <Link
+            href="/"
+            className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 soft-button"
+          >
+            Return to Portal
+          </Link>
+        </div>
       </div>
     );
   }
